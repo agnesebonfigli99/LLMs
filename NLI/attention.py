@@ -37,13 +37,11 @@ def load_model_and_tokenizer(model_name, training_size, device):
 def main(model_name, training_size):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    # Caricare i modelli e i tokenizer
     model_pretrained, _ = load_model_and_tokenizer(model_name, 0, device)
     model_finetuned, tokenizer = load_model_and_tokenizer(model_name, training_size, device)
 
-    # Caricare e preparare i dati
     data = []
-    with open('/content/drive/MyDrive/mli_train.jsonl', 'r') as file:
+    with open('/.../mli_train.jsonl', 'r') as file:
         for line in file:
             data.append(json.loads(line))
     data = pd.DataFrame(data)
@@ -53,7 +51,6 @@ def main(model_name, training_size):
 
     _, test_sentences1, _, test_sentences2, _, _ = train_test_split(sentences1, sentences2, labels, test_size=0.2, random_state=42)
 
-    # Calcolare la similarità coseno tra le attenzioni dei modelli
     num_layers = model_pretrained.config.num_hidden_layers
     num_attention_heads = model_pretrained.config.num_attention_heads
     cos_sim_layers = np.zeros((num_layers, num_attention_heads))
@@ -77,8 +74,6 @@ def main(model_name, training_size):
                 cos_sim_layers[layer, head] += cos_sim
 
     cos_sim_layers /= len(test_sentences1)
-
-    # Visualizzare la similarità coseno
     plt.figure(figsize=(10, 8))
     sns.heatmap(cos_sim_layers, annot=True, fmt=".2f", cmap='viridis', xticklabels=range(1, num_attention_heads+1), yticklabels=range(1, num_layers+1))
     plt.xlabel("Attention Heads")
