@@ -91,4 +91,9 @@ def main():
     plt.show()
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Compare model attentions between pre-trained and fine-tuned models.")
+    parser.add_argument('--training_sizes', type=str, help='Sizes of the training sets as percentages, separated by commas (e.g., 10,30)')
+    parser.add_argument('--model_name', type=str, choices=['bert', 'biobert', 'gpt2', 'biogpt'], help='Model to fine-tune')
+    
+    args = parser.parse_args()
+    main(args.model_name, args.training_size)
