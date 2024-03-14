@@ -44,10 +44,16 @@ for df in [train_df, validation_df, test_df]:
     df['tags'] = df['tags'].apply(lambda tags_list: update_tags(tags_list, label_mapping))
 
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') #GPT2Tokenizer.from_pretrained('gpt2-medium')
-#tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1') or tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt")
-model = BertForTokenClassification.from_pretrained('bert-base-uncased') #GPT2ForTokenClassification.from_pretrained('gpt2-medium', num_labels=6)
-#model = BertForTokenClassification.from_pretrained('mis-lab/biobert-v1.1', num_labels=6) or model = ForTokenClassification.from_pretrained("microsoft/biogpt", num_labels=6)
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
+tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
+tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
+
+model = BertForTokenClassification.from_pretrained('bert-base-uncased', num_labels=6, output_attentions=True)
+model = GPT2ForTokenClassification.from_pretrained('gpt2-medium', num_labels=6, output_attentions=True)
+model= BertForTokenClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=6, output_attentions=True)
+model = BioGptForTokenClassification.from_pretrained('microsoft/biogpt', num_labels=6, output_attentions=True)
+
 model.to(device)
 
 def get_entity_embeddings_mean(model, tokenizer, sentences_tokens, tags, layer_num=-1):
