@@ -154,10 +154,10 @@ tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
 tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
 tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
 
-model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=6, output_attentions=True)
-model = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=6, output_attentions=True)
-model= BertForSequenceClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=6, output_attentions=True)
-model = BioGptForSequenceClassification.from_pretrained('microsoft/biogpt', num_labels=6, output_attentions=True)
+model = BertForTokenClassification.from_pretrained('bert-base-uncased', num_labels=6, output_attentions=True)
+model = GPT2ForTokenClassification.from_pretrained('gpt2-medium', num_labels=6, output_attentions=True)
+model= BertForTokenClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=6, output_attentions=True)
+model = BioGptForTokenClassification.from_pretrained('microsoft/biogpt', num_labels=6, output_attentions=True)
 
 sample_df = train_df.sample(frac=0.1, random_state=200)  
 train_df, test_df, train_labels, _ = train_test_split(sample_df, test_size=0.2, random_state=42, stratify=train_labels)  
