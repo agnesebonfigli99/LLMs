@@ -6,21 +6,20 @@
 # !pip install sklearn
 # !pip install tqdm
 
+import argparse
 import os
 import json
 import numpy as np
 import pandas as pd
 import torch
-from tqdm import tqdm
-from sklearn.svm import SVC
+from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
+from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix, classification_report
-from transformers import BertTokenizer, BertForSequenceClassification
-from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
+from transformers import BertTokenizer, GPT2Tokenizer, BertForSequenceClassification, GPT2ForSequenceClassification, AutoTokenizer, AutoModelForSequenceClassification
+from tqdm import tqdm
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-class CustomDataset(Dataset):
+class CustomDataset(torch.utils.data.Dataset):
     def __init__(self, sentences1, sentences2, labels):
         self.sentences1 = sentences1
         self.sentences2 = sentences2
@@ -39,7 +38,7 @@ def load_data(file_path):
             data.append(json.loads(line))
     return pd.DataFrame(data)
 
-def get_embeddings(model, tokenizer, data_loader):
+def get_embeddings(model, tokenizer, data_loader, device):
     embeddings1 = []
     embeddings2 = []
     model.eval()
@@ -67,55 +66,78 @@ def probing_task(train_features, train_labels, test_features, test_labels):
     cr = classification_report(test_labels, predictions)
     return cm, cr
 
-def main():
-    # Load and preprocess the dataset
+def main(model_name, training_size):
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Caricare i dati
     data = load_data('mli_train.jsonl')
     sentences1 = data['sentence1'].values
     sentences2 = data['sentence2'].values
     labels = data['gold_label'].map({'entailment': 0, 'contradiction': 1, 'neutral': 2}).values
 
-    # Split the dataset
+    # Split dei dati
     train_sentences1, test_sentences1, train_sentences2, test_sentences2, train_labels, test_labels = train_test_split(
         sentences1, sentences2, labels, test_size=0.2, random_state=42)
 
+    # Preparazione dei DataLoader
     train_dataset = CustomDataset(train_sentences1, train_sentences2, train_labels)
     test_dataset = CustomDataset(test_sentences1, test_sentences2, test_labels)
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
-    tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
-    tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
-    
-    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3, output_attentions=True)
-    model = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3, output_attentions=True)
-    model= BertForSequenceClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=3, output_attentions=True)
-    model = BioGptForSequenceClassification.from_pretrained('microsoft/biogpt', num_labels=3, output_attentions=True)
+    # Caricamento del modello e tokenizer
+    model, tokenizer = load_model_and_tokenizer(model_name, training_size, device)
 
-    # Get embeddings for each layer
+    # Estrazione degli embeddings
     folder_path = './embeddings'
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
-    for layer_num in range(model.config.num_hidden_layers + 1):  # Including the output layer
-        print(f"Evaluating BERT layer {layer_num}")
-        train_embeddings1, train_embeddings2 = get_embeddings(model, tokenizer, train_loader)
-        test_embeddings1, test_embeddings2 = get_embeddings(model, tokenizer, test_loader)
+    train_embeddings1, train_embeddings2 = get_embeddings(model, tokenizer, train_loader, device)
+    test_embeddings1, test_embeddings2 = get_embeddings(model, tokenizer, test_loader, device)
 
-        # Preparing features
-        train_features = prepare_features(train_embeddings1, train_embeddings2)
-        test_features = prepare_features(test_embeddings1, test_embeddings2)
+    # Preparazione delle features
+    train_features = prepare_features(train_embeddings1, train_embeddings2)
+    test_features = prepare_features(test_embeddings1, test_embeddings2)
 
-        # Probing task
-        cm, cr = probing_task(train_features, train_labels, test_features, test_labels)
-        print(f"Layer {layer_num} - Confusion Matrix:\n{cm}")
-        print(f"Layer {layer_num} - Classification Report:\n{cr}")
+    # Esecuzione del probing task
+    cm, cr = probing_task(train_features, train_labels, test_features, test_labels)
+    print(f"Confusion Matrix:\n{cm}")
+    print(f"Classification Report:\n{cr}")
 
-        # Save embeddings
-        np.save(os.path.join(folder_path, f'train_embeddings1_layer_{layer_num}.npy'), train_embeddings1)
-        np.save(os.path.join(folder_path, f'train_embeddings2_layer_{layer_num}.npy'), train_embeddings2)
+    # Salvataggio degli embeddings
+    np.save(os.path.join(folder_path, f'train_embeddings1.npy'), train_embeddings1)
+    np.save(os.path.join(folder_path, f'train_embeddings2.npy'), train_embeddings2)
+
+def load_model_and_tokenizer(model_name, training_size, device):
+    model_map = {
+        'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
+        'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
+        'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
+        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),  # Assunzione: BioGpt utilizza GPT2Tokenizer & Classifier
+    }
+
+    model_path, tokenizer_class, model_class = model_map[model_name]
+    tokenizer = tokenizer_class.from_pretrained(model_path)
+
+    if training_size == 0:
+        model = model_class.from_pretrained(model_path, num_labels=3, output_attentions=True)
+    else:
+        path_to_finetuned_model_weights = f'/path/to/save/model_{model_name}_{training_size}.bin'
+        model = model_class(num_labels=3, output_attentions=True)  
+        state_dict = torch.load(path_to_finetuned_model_weights, map_location=device)
+        model.load_state_dict(state_dict)
+
+    model = model.to(device)
+    model.eval()
+    return model, tokenizer
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description='Perform a probing task with pre-trained/fine-tuned models.')
+    parser.add_argument('--model_name', type=str, required=True, help='Name of the model to use.')
+    parser.add_argument('--training_size', type=int, required=True, help='Size of the training set used for fine-tuning the model, 0 means pre-trained.')
+    
+    args = parser.parse_args()
+    main(args.model_name, args.training_size)
+
