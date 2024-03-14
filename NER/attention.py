@@ -11,10 +11,10 @@ def main():
     tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
     tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
 
-    model_pretrained = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3, output_attentions=True)
-    model_pretrained = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3, output_attentions=True)
-    model_pretrained = BertForSequenceClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=3, output_attentions=True)
-    model_pretrained = BioGptForSequenceClassification.from_pretrained('microsoft/biogpt', num_labels=3, output_attentions=True)
+    model_pretrained = BertForTokenClassification.from_pretrained('bert-base-uncased', num_labels=6, output_attentions=True)
+    model_pretrained = GPT2ForTokenClassification.from_pretrained('gpt2-medium', num_labels=6, output_attentions=True)
+    model_pretrained = BertForTokenClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=6, output_attentions=True)
+    model_pretrained = BioGptForTokenClassification.from_pretrained('microsoft/biogpt', num_labels=6, output_attentions=True)
     model_pretrained = model_pretrained.to(device)
     model_pretrained.eval()
 
