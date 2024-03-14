@@ -1,7 +1,13 @@
 #!pip install datasets transformers scikit-learn pandas
+import json
 import pandas as pd
+import torch
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from transformers import GPT2Tokenizer, GPT2ForSequenceClassification
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
-from datasets import load_dataset 
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
