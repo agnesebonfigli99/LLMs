@@ -1,4 +1,5 @@
 #!pip install datasets transformers scikit-learn pandas
+import argparse
 import json
 import pandas as pd
 import torch
@@ -11,10 +12,10 @@ from sklearn.model_selection import train_test_split
 
 def load_model_and_tokenizer(model_name, training_size, device):
     model_map = {
-        'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
-        'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
-        'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
-        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),
+        'bert': ('bert-base-uncased', BertTokenizer, BertForTokenClassification),
+        'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForTokenClassification),
+        'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForTokenClassification),
+        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForTokenClassification),
     }
 
     model_path, tokenizer_class, model_class = model_map[model_name]
@@ -23,7 +24,7 @@ def load_model_and_tokenizer(model_name, training_size, device):
     if training_size == 0:
         model = model_class.from_pretrained(model_path, num_labels=3, output_attentions=True)
     else:
-        path_to_finetuned_model_weights = f'/path/to/save/model_{model_name}_{training_size}.bin'
+        path_to_finetuned_model_weights = f'/path/to/model_{model_name}_{training_size}.bin'
         model = model_class(num_labels=3, output_attentions=True)
         state_dict = torch.load(path_to_finetuned_model_weights, map_location=device)
         model.load_state_dict(state_dict)
