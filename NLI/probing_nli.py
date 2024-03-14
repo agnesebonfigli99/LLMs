@@ -16,7 +16,9 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 from sklearn.svm import SVC
 from sklearn.metrics import confusion_matrix, classification_report
-from transformers import BertTokenizer, GPT2Tokenizer, BertForSequenceClassification, GPT2ForSequenceClassification, AutoTokenizer, AutoModelForSequenceClassification
+from transformers import (BertTokenizer, BertForSequenceClassification,
+                          GPT2Tokenizer, GPT2ForSequenceClassification,
+                          BioGptTokenizer, BioGptForSequenceClassification)
 from tqdm import tqdm
 
 class CustomDataset(torch.utils.data.Dataset):
@@ -68,28 +70,22 @@ def probing_task(train_features, train_labels, test_features, test_labels):
 
 def main(model_name, training_size):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Caricare i dati
     data = load_data('mli_train.jsonl')
     sentences1 = data['sentence1'].values
     sentences2 = data['sentence2'].values
     labels = data['gold_label'].map({'entailment': 0, 'contradiction': 1, 'neutral': 2}).values
 
-    # Split dei dati
     train_sentences1, test_sentences1, train_sentences2, test_sentences2, train_labels, test_labels = train_test_split(
         sentences1, sentences2, labels, test_size=0.2, random_state=42)
 
-    # Preparazione dei DataLoader
     train_dataset = CustomDataset(train_sentences1, train_sentences2, train_labels)
     test_dataset = CustomDataset(test_sentences1, test_sentences2, test_labels)
 
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-    # Caricamento del modello e tokenizer
     model, tokenizer = load_model_and_tokenizer(model_name, training_size, device)
 
-    # Estrazione degli embeddings
     folder_path = './embeddings'
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
@@ -97,16 +93,13 @@ def main(model_name, training_size):
     train_embeddings1, train_embeddings2 = get_embeddings(model, tokenizer, train_loader, device)
     test_embeddings1, test_embeddings2 = get_embeddings(model, tokenizer, test_loader, device)
 
-    # Preparazione delle features
     train_features = prepare_features(train_embeddings1, train_embeddings2)
     test_features = prepare_features(test_embeddings1, test_embeddings2)
 
-    # Esecuzione del probing task
     cm, cr = probing_task(train_features, train_labels, test_features, test_labels)
     print(f"Confusion Matrix:\n{cm}")
     print(f"Classification Report:\n{cr}")
 
-    # Salvataggio degli embeddings
     np.save(os.path.join(folder_path, f'train_embeddings1.npy'), train_embeddings1)
     np.save(os.path.join(folder_path, f'train_embeddings2.npy'), train_embeddings2)
 
