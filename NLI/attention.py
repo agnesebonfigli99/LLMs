@@ -88,8 +88,8 @@ def main(model_name, training_size):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compare model attentions between pre-trained and fine-tuned models.")
-    parser.add_argument("--model_name", type=str, required=True, help="Name of the model (bert, biobert, gpt2, biogpt).")
-    parser.add_argument("--training_size", type=int, required=True, help="Size of the training set used for fine-tuning the model.")
+    parser.add_argument('--training_size', type=int, choices=[0, 10, 30, 50, 100], help='Size of the training set as a percentage')
+    parser.add_argument('--model_name', type=str, choices=['bert', 'biobert', 'gpt2', 'biogpt'], help='Model to fine-tune')
     
     args = parser.parse_args()
     main(args.model_name, args.training_size)
