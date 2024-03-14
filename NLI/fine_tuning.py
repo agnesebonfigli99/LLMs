@@ -38,9 +38,8 @@ def main(training_size, model_name):
     labels = data['gold_label'].values
 
     # Split the data
-    train_size = training_size / len(data) if training_size > 0 else 0.9  # Adjust based on training size input
-    test_size = 1 - train_size
-    train_sentences1, test_sentences1, train_labels, test_labels = train_test_split(sentences1, labels, test_size=test_size, random_state=42, stratify=labels)
+    train_size = training_size / 100
+    train_sentences1, test_sentences1, train_labels, test_labels = train_test_split(sentences1, labels, train_size=train_size, random_state=42, stratify=labels)
     train_sentences2, test_sentences2, _, _ = train_test_split(sentences2, labels, test_size=test_size, random_state=42, stratify=labels)
 
     model_map = {
@@ -85,11 +84,12 @@ def main(training_size, model_name):
 
     # Evaluation could go here if training_size > 0, or with pretrained model as desired
 
-    torch.save(model.state_dict(), f'/path/to/save/model_{model_name}.bin') 
+    torch.save(model.state_dict(), f'/path/to/save/model_{model_name}_{training_size}.bin')
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Fine-tune a model on a dataset')
-    parser.add_argument('--training_size', type=int, choices=[0, 10, 30, 50, 100], help='Size of the training set')
+    parser.add_argument('--training_size', type=int, choices=[0, 10, 30, 50, 100], help='Size of the training set as a percentage')
     parser.add_argument('--model_name', type=str, choices=['bert', 'biobert', 'gpt2', 'biogpt'], help='Model to fine-tune')
     
     args = parser.parse_args()
