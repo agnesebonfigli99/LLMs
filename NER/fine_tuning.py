@@ -147,8 +147,17 @@ MAX_LEN = 128
 TRAIN_BATCH_SIZE = 4
 VALID_BATCH_SIZE = 2
 EPOCHS = 5
-LEARNING_RATE = 1e-05
-tokenizer = BertTokenizerFast.from_pretrained('bert-base-uncased')
+LEARNING_RATE = 1e-05 
+
+tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
+tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
+tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
+tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
+
+model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=6, output_attentions=True)
+model = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=6, output_attentions=True)
+model= BertForSequenceClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=6, output_attentions=True)
+model = BioGptForSequenceClassification.from_pretrained('microsoft/biogpt', num_labels=6, output_attentions=True)
 
 sample_df = train_df.sample(frac=0.1, random_state=200)  
 train_df, test_df, train_labels, _ = train_test_split(sample_df, test_size=0.2, random_state=42, stratify=train_labels)  
@@ -161,7 +170,6 @@ test_params = {'batch_size': VALID_BATCH_SIZE, 'shuffle': True, 'num_workers': 0
 training_loader = DataLoader(training_set, **train_params)
 testing_loader = DataLoader(testing_set, **test_params)
 
-model = BertForTokenClassification.from_pretrained('bert-base-uncased', num_labels=len(label_mapping))
 model.to(device)
 
 optimizer = AdamW(model.parameters(), lr=LEARNING_RATE)
