@@ -45,7 +45,6 @@ def main():
     train_tags = train_df['tags']
     test_tokens = test_df['tokens']
     test_tags = test_df['tags']
-    
     cos_sim_layers = np.zeros((num_layers, num_attention_heads))
     
     for s in test_tokens:
@@ -61,21 +60,18 @@ def main():
             for head in range(num_attention_heads):
                 attn_pretrained = outputs_pretrained.attentions[layer][0, head].detach().cpu().numpy()
                 attn_finetuned = outputs_finetuned.attentions[layer][0, head].detach().cpu().numpy()
-    
                 attn_pretrained_flat = attn_pretrained.flatten()
                 attn_finetuned_flat = attn_finetuned.flatten()
                 cos_sim = cosine_similarity([attn_pretrained_flat], [attn_finetuned_flat])[0][0]
-    
-                # Aggregate the cosine similarity scores
                 cos_sim_layers[layer, head] += cos_sim
-    
-    # Calculate the average cosine similarity per head per layer across all sentence pairs
+  
     cos_sim_layers /= len(test_tokens)
-    
-    # Create the heatmap
     plt.figure(figsize=(10, 8))
     sns.heatmap(cos_sim_layers, annot=True, fmt=".2f", cmap='viridis', xticklabels=range(1, num_attention_heads+1), yticklabels=range(1, num_layers+1))
     plt.xlabel("Attention Heads")
     plt.ylabel("Layers")
     plt.title("Average Cosine Similarity between Pre-trained and Fine-tuned Models")
     plt.show()
+
+if __name__ == "__main__":
+    main()
