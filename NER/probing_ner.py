@@ -43,18 +43,31 @@ def update_tags(tags_list, label_mapping):
 for df in [train_df, validation_df, test_df]:
     df['tags'] = df['tags'].apply(lambda tags_list: update_tags(tags_list, label_mapping))
 
+model_map = {
+    'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
+    'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
+    'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
+    'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),
+}
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
-tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
-tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
-tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
+def load_model_and_tokenizer(model_name, training_size, device):
+    model_path, tokenizer_class, model_class = model_map[model_name]
+    tokenizer = tokenizer_class.from_pretrained(model_path)
 
-model = BertForTokenClassification.from_pretrained('bert-base-uncased', num_labels=6, output_attentions=True)
-model = GPT2ForTokenClassification.from_pretrained('gpt2-medium', num_labels=6, output_attentions=True)
-model= BertForTokenClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=6, output_attentions=True)
-model = BioGptForTokenClassification.from_pretrained('microsoft/biogpt', num_labels=6, output_attentions=True)
+    model = model_class(num_labels=6) # Inizializza il modello per fine-tuning o uso diretto
+    model.to(device)
 
-model.to(device)
+    weights_path = f'model_{model_name}_{training_size}.bin'
+    if training_size > 0 and os.path.exists(weights_path):
+        model.load_state_dict(torch.load(weights_path, map_location=device))
+        print(f"Loaded weights from {weights_path}")
+    elif training_size == 0:
+        model = model_class.from_pretrained(model_path, num_labels=6)
+        print(f"Using pre-trained model without further fine-tuning.")
+    else:
+        print("Training size is greater than 0, but no pre-trained weights found. Initializing model from scratch.")
+
+    return model, tokenizer
 
 def get_entity_embeddings_mean(model, tokenizer, sentences_tokens, tags, layer_num=-1):
     """
@@ -170,7 +183,7 @@ def probing_task(entity_embeddings, train_labels, test_entity_embeddings, test_l
 
     return f1_macro, f1_micro
 
-def main():
+def main(model_name, training_size):
     base_path = "/path/to/your/embeddings/"  # Example base path
 
     bert_model, bert_tokenizer = None, None  
