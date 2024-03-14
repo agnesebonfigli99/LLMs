@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from sklearn.model_selection import train_test_split
 from transformers import (BertTokenizer, BertForSequenceClassification,
                           GPT2Tokenizer, GPT2ForSequenceClassification,
-                          AutoTokenizer, AutoModelForSequenceClassification)
+                          BioGptTokenizer, BioGptForSequenceClassification)
 import json
 import pandas as pd
 from tqdm import tqdm
@@ -20,16 +20,12 @@ def prepare_data(sentences1, sentences2, labels, tokenizer):
 
 def main(training_size, model_name):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Load the data
     data = []
     with open('/.../mli_train.jsonl', 'r') as file:
         for line in file:
             data.append(json.loads(line))
 
     data = pd.DataFrame(data)
-
-    # Map labels to numbers
     label_map = {'entailment': 0, 'contradiction': 1, 'neutral': 2}
     data['gold_label'] = data['gold_label'].map(label_map)
 
@@ -37,7 +33,6 @@ def main(training_size, model_name):
     sentences2 = data['sentence2'].values
     labels = data['gold_label'].values
 
-    # Split the data
     train_size = training_size / 100
     train_sentences1, test_sentences1, train_labels, test_labels = train_test_split(sentences1, labels, train_size=train_size, random_state=42, stratify=labels)
     train_sentences2, test_sentences2, _, _ = train_test_split(sentences2, labels, test_size=test_size, random_state=42, stratify=labels)
@@ -46,7 +41,7 @@ def main(training_size, model_name):
         'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
         'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
         'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
-        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),  # Assumption: BioGpt uses GPT2Tokenizer & Classifier
+        'biogpt': ('microsoft/biogpt', BioGptTokenizer, BioGptForSequenceClassification) 
     }
 
     model_path, tokenizer_class, model_class = model_map[model_name]
@@ -61,8 +56,6 @@ def main(training_size, model_name):
 
         optimizer = optim.Adam(model.parameters(), lr=2e-5)
         loss_fn = nn.CrossEntropyLoss()
-
-        # Fine-tuning
         print("Starting fine-tuning...")
         model.train()
         for epoch in range(3):
@@ -81,8 +74,6 @@ def main(training_size, model_name):
 
             avg_epoch_loss = total_loss / len(train_loader)
             print(f"Epoch {epoch}, Loss: {avg_epoch_loss}")
-
-    # Evaluation could go here if training_size > 0, or with pretrained model as desired
 
     torch.save(model.state_dict(), f'/path/to/save/model_{model_name}_{training_size}.bin')
 
