@@ -34,8 +34,6 @@ def main():
     sentences2 = data['sentence2'].values
     labels = data['gold_label'].values
 
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium')
-
     # Split the data
     train_sentences1, test_sentences1, train_labels, test_labels = train_test_split(sentences1, labels, test_size=0.9, random_state=42, stratify=labels)
     train_sentences2, test_sentences2, _, _ = train_test_split(sentences2, labels, test_size=0.9, random_state=42, stratify=labels)
@@ -43,10 +41,20 @@ def main():
     train_sentences1, _, train_labels, _ = train_test_split(train_sentences1, train_labels, test_size=0.2, random_state=42, stratify=train_labels)
     train_sentences2, _, _, _ = train_test_split(train_sentences2, train_labels, test_size=0.2, random_state=42, stratify=train_labels)
 
+
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
+    tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
+    tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
+
+    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3, output_attentions=True)
+    model = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3, output_attentions=True)
+    model= BertForSequenceClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=3, output_attentions=True)
+    model = BioGptForSequenceClassification.from_pretrained('microsoft/biogpt', num_labels=3, output_attentions=True)
+    
     train_loader = prepare_data(train_sentences1, train_sentences2, train_labels, tokenizer)
     test_loader = prepare_data(test_sentences1, test_sentences2, test_labels, tokenizer)
 
-    model = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3)
     model.to(device)
 
     optimizer = optim.Adam(model.parameters(), lr=2e-5)
