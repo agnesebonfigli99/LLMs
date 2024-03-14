@@ -1,18 +1,25 @@
+#!pip install datasets transformers scikit-learn pandas
 import json
 import pandas as pd
 import torch
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from transformers import GPT2Tokenizer, GPT2ForSequenceClassification
+from transformers import BertTokenizer, GPT2Tokenizer, BioGptTokenizer, BertForSequenceClassification, GPT2ForSequenceClassification, BioGptForSequenceClassification
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
+    tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
+    tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
 
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium')
+    model_pretrained = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3, output_attentions=True)
     model_pretrained = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3, output_attentions=True)
+    model_pretrained = BertForSequenceClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=3, output_attentions=True)
+    model_pretrained = BioGptForSequenceClassification.from_pretrained('microsoft/biogpt', num_labels=3, output_attentions=True)
     model_pretrained = model_pretrained.to(device)
     model_pretrained.eval()
 
@@ -23,7 +30,6 @@ def main():
     model_finetuned = model_finetuned.to(device)
     model_finetuned.eval() 
 
-    tokenizer.pad_token = tokenizer.eos_token
     data = []
     with open('/content/drive/MyDrive/mli_train.jsonl', 'r') as file:
         for line in file:
