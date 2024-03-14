@@ -1,6 +1,11 @@
+#!pip install datasets transformers scikit-learn pandas
+import json
+import pandas as pd
+import torch
+import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
-from transformers import BertTokenizer, GPT2Tokenizer, BioGptTokenizer, BertForSequenceClassification, GPT2ForSequenceClassification, BioGptForSequenceClassification
+from transformers import BertTokenizer, GPT2Tokenizer, BioGptTokenizer, BertForTokenClassification, GPT2ForTokenClassification, BioGptForTokenClassification
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 
