@@ -18,7 +18,7 @@ def main():
     model_finetuned = model_finetuned.to(device)
     model_finetuned.eval() 
 
-    tokenizer.pad_token = tokenizer.eos_token
+    #tokenizer.pad_token = tokenizer.eos_token
     dataset = load_dataset("tner/bionlp2004")
     def dataset_to_df(split):
         return pd.DataFrame({'tokens': dataset[split]['tokens'], 'tags': dataset[split]['tags']})
