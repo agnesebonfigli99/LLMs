@@ -1,35 +1,47 @@
 #!pip install datasets transformers scikit-learn pandas
+import argparse
 import json
+import numpy as np
 import pandas as pd
 import torch
-import numpy as np
-import seaborn as sns
-import matplotlib.pyplot as plt
-from transformers import BertTokenizer, GPT2Tokenizer, BioGptTokenizer, BertForSequenceClassification, GPT2ForSequenceClassification, BioGptForSequenceClassification
+from transformers import BertTokenizer, GPT2Tokenizer, BertForSequenceClassification, GPT2ForSequenceClassification
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-def main():
+def load_model_and_tokenizer(model_name, training_size, device):
+    model_map = {
+        'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
+        'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
+        'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
+        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),
+    }
+
+    model_path, tokenizer_class, model_class = model_map[model_name]
+    tokenizer = tokenizer_class.from_pretrained(model_path)
+
+    if training_size == 0:
+        model = model_class.from_pretrained(model_path, num_labels=3, output_attentions=True)
+    else:
+        path_to_finetuned_model_weights = f'/path/to/save/model_{model_name}_{training_size}.bin'
+        model = model_class(num_labels=3, output_attentions=True)
+        state_dict = torch.load(path_to_finetuned_model_weights, map_location=device)
+        model.load_state_dict(state_dict)
+
+    model = model.to(device)
+    model.eval()
+
+    return model, tokenizer
+
+def main(model_name, training_size):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
-    tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
-    tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
 
-    model_pretrained = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3, output_attentions=True)
-    model_pretrained = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3, output_attentions=True)
-    model_pretrained = BertForSequenceClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=3, output_attentions=True)
-    model_pretrained = BioGptForSequenceClassification.from_pretrained('microsoft/biogpt', num_labels=3, output_attentions=True)
-    model_pretrained = model_pretrained.to(device)
-    model_pretrained.eval()
+    # Caricare i modelli e i tokenizer
+    model_pretrained, _ = load_model_and_tokenizer(model_name, 0, device)
+    model_finetuned, tokenizer = load_model_and_tokenizer(model_name, training_size, device)
 
-    model_finetuned = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3, output_attentions=True)
-    path_to_finetuned_model_weights = '/content/drive/MyDrive/fine_tunedNLI_GPT10_model.pth'
-    state_dict = torch.load(path_to_finetuned_model_weights, map_location=device)
-    model_finetuned.load_state_dict(state_dict)
-    model_finetuned = model_finetuned.to(device)
-    model_finetuned.eval() 
-
+    # Caricare e preparare i dati
     data = []
     with open('/content/drive/MyDrive/mli_train.jsonl', 'r') as file:
         for line in file:
@@ -41,9 +53,9 @@ def main():
 
     _, test_sentences1, _, test_sentences2, _, _ = train_test_split(sentences1, sentences2, labels, test_size=0.2, random_state=42)
 
+    # Calcolare la similarità coseno tra le attenzioni dei modelli
     num_layers = model_pretrained.config.num_hidden_layers
     num_attention_heads = model_pretrained.config.num_attention_heads
-
     cos_sim_layers = np.zeros((num_layers, num_attention_heads))
 
     for s1, s2 in zip(test_sentences1, test_sentences2):
@@ -65,6 +77,8 @@ def main():
                 cos_sim_layers[layer, head] += cos_sim
 
     cos_sim_layers /= len(test_sentences1)
+
+    # Visualizzare la similarità coseno
     plt.figure(figsize=(10, 8))
     sns.heatmap(cos_sim_layers, annot=True, fmt=".2f", cmap='viridis', xticklabels=range(1, num_attention_heads+1), yticklabels=range(1, num_layers+1))
     plt.xlabel("Attention Heads")
@@ -73,4 +87,9 @@ def main():
     plt.show()
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Compare model attentions between pre-trained and fine-tuned models.")
+    parser.add_argument("--model_name", type=str, required=True, help="Name of the model (bert, biobert, gpt2, biogpt).")
+    parser.add_argument("--training_size", type=int, required=True, help="Size of the training set used for fine-tuning the model.")
+    
+    args = parser.parse_args()
+    main(args.model_name, args.training_size)
