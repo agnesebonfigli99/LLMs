@@ -165,30 +165,38 @@ def probing_task(entity_embeddings, train_labels, test_entity_embeddings, test_l
 
     return f1_macro, f1_micro
 
-if __name__ == "__main__":
-    base_path = "/path/to/your/embeddings/" 
+def main():
+    base_path = "/path/to/your/embeddings/"  # Example base path
+
+    bert_model, bert_tokenizer = None, None  
+    train_tokens, train_tags, test_tokens, test_tags = None, None, None, None  
+    layer_num = 0  
 
     train_entity_embeddings, train_filtered_tags, train_words = get_entity_embeddings_mean(bert_model, bert_tokenizer, train_tokens, train_tags, layer_num)
     test_entity_embeddings, test_filtered_tags, test_words = get_entity_embeddings_mean(bert_model, bert_tokenizer, test_tokens, test_tags, layer_num)
 
-    train_entity_embeddings = [torch.tensor(embedding) for embedding in train_entity_embeddings_filtered]
-    test_entity_embeddings = [torch.tensor(embedding) for embedding in test_entity_embeddings_filtered]
+    train_entity_embeddings_filtered = [torch.tensor(embedding) for embedding in train_entity_embeddings]
+    test_entity_embeddings_filtered = [torch.tensor(embedding) for embedding in test_entity_embeddings]
+
     results = {}
     for layer_num in range(0, 13):
         print(f"Probing layer {layer_num}...")
         f1_macro, f1_micro = probing_task(
             train_entity_embeddings_filtered,
-            train_filtered_tags_filtered,
+            train_filtered_tags,
             test_entity_embeddings_filtered,
-            test_filtered_tags_filtered,
-            embedding_dim=768,  
-            hidden_dim=256,  
+            test_filtered_tags,
+            embedding_dim=768, 
+            hidden_dim=256, 
             num_tags=6  
         )
         results[layer_num] = {
             "F1 Macro": f1_macro,
             "F1 Micro": f1_micro
         }
-        
+
         print(f"Layer {layer_num}: F1 Macro = {f1_macro}, F1 Micro = {f1_micro}")
     print("Completed probing across all BERT layers.")
+
+if __name__ == "__main__":
+    main()
