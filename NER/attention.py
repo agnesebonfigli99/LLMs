@@ -9,27 +9,33 @@ from transformers import BertTokenizer, GPT2Tokenizer, BioGptTokenizer, BertForT
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import train_test_split
 
+def load_model_and_tokenizer(model_name, training_size, device):
+    model_map = {
+        'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
+        'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
+        'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
+        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),
+    }
+
+    model_path, tokenizer_class, model_class = model_map[model_name]
+    tokenizer = tokenizer_class.from_pretrained(model_path)
+
+    if training_size == 0:
+        model = model_class.from_pretrained(model_path, num_labels=3, output_attentions=True)
+    else:
+        path_to_finetuned_model_weights = f'/path/to/save/model_{model_name}_{training_size}.bin'
+        model = model_class(num_labels=3, output_attentions=True)
+        state_dict = torch.load(path_to_finetuned_model_weights, map_location=device)
+        model.load_state_dict(state_dict)
+
+    model = model.to(device)
+    model.eval()
+
+    return model, tokenizer  
+
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
-    tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
-    tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
-
-    model_pretrained = BertForTokenClassification.from_pretrained('bert-base-uncased', num_labels=6, output_attentions=True)
-    model_pretrained = GPT2ForTokenClassification.from_pretrained('gpt2-medium', num_labels=6, output_attentions=True)
-    model_pretrained = BertForTokenClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=6, output_attentions=True)
-    model_pretrained = BioGptForTokenClassification.from_pretrained('microsoft/biogpt', num_labels=6, output_attentions=True)
-    model_pretrained = model_pretrained.to(device)
-    model_pretrained.eval()
-
-    model_finetuned = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3, output_attentions=True)
-    path_to_finetuned_model_weights = '/content/drive/MyDrive/fine_tunedNLI_GPT10_model.pth'
-    state_dict = torch.load(path_to_finetuned_model_weights, map_location=device)
-    model_finetuned.load_state_dict(state_dict)
-    model_finetuned = model_finetuned.to(device)
-    model_finetuned.eval() 
-    
+    model, tokenizer = load_model_and_tokenizer(model_name, training_size, device)
     dataset = load_dataset("tner/bionlp2004")
     def dataset_to_df(split):
         return pd.DataFrame({'tokens': dataset[split]['tokens'], 'tags': dataset[split]['tags']})
