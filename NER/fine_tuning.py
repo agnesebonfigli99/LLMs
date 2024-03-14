@@ -4,7 +4,9 @@ import numpy as np
 import pandas as pd
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
-from transformers import BertTokenizerFast, BertForTokenClassification, AdamW
+from transformers import (BertTokenizer, BertForTokenClassification,
+                          GPT2Tokenizer, GPT2ForTokenClassification,
+                          BioGptTokenizer, BioGptForTokenClassification))
 from datasets import load_dataset 
 from sklearn import train_test_split, classification_report
 
@@ -154,7 +156,7 @@ def load_model_and_tokenizer(model_name, training_size, device):
         'bert': ('bert-base-uncased', BertTokenizer, BertForTokenClassification),
         'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForTokenClassification),
         'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForTokenClassification),
-        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForTokenClassification),  # Assumendo che GPT2Tokenizer & Classifier siano corretti per biogpt
+        'biogpt': ('microsoft/biogpt', BioGptTokenizer, BioGptForTokenClassification)
     }
 
     model_path, tokenizer_class, model_class = model_map[model_name]
@@ -204,7 +206,6 @@ def main(model_name, training_size):
     else:
         print("Training size set to 0. Skipping fine-tuning and using the pre-trained model directly.")
 
-    # Salvataggio del modello
     save_path = f'model_{model_name}_{training_size}.bin'
     torch.save(model.state_dict(), save_path)
     print(f"Model saved as {save_path}")
