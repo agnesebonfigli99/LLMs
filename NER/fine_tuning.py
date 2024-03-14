@@ -211,7 +211,7 @@ def main(model_name, training_size):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", choices=["bert", "gpt2"], required=True, help="Model name")
+    parser.add_argument("--model_name", choices=["bert", "gpt2", "biobert", "biobert"], required=True, help="Model name")
     parser.add_argument("--training_size", type=int, choices=[0, 10, 30, 50, 100], default=100, help="Percentage of training data to use (0 for pre-trained model only)")
 
     args = parser.parse_args()
