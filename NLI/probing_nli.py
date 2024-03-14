@@ -1,3 +1,11 @@
+# Required installations
+# !pip install datasets
+# !pip install transformers
+# !pip install torch
+# !pip install pytorch-crf
+# !pip install sklearn
+# !pip install tqdm
+
 import os
 import json
 import numpy as np
@@ -10,7 +18,6 @@ from sklearn.metrics import confusion_matrix, classification_report
 from transformers import BertTokenizer, BertForSequenceClassification
 from torch.utils.data import DataLoader, Dataset, RandomSampler, SequentialSampler
 
-# Ensure your CUDA devices are correctly configured if using GPU
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class CustomDataset(Dataset):
@@ -77,9 +84,15 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=32, shuffle=False)
 
-    # Initialize tokenizer and model
-    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
-    model = BertForSequenceClassification.from_pretrained('bert-base-uncased').to(device)
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
+    tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
+    tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
+    tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
+    
+    model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=3, output_attentions=True)
+    model = GPT2ForSequenceClassification.from_pretrained('gpt2-medium', num_labels=3, output_attentions=True)
+    model= BertForSequenceClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=3, output_attentions=True)
+    model = BioGptForSequenceClassification.from_pretrained('microsoft/biogpt', num_labels=3, output_attentions=True)
 
     # Get embeddings for each layer
     folder_path = './embeddings'
