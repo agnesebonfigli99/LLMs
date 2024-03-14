@@ -18,7 +18,6 @@ import matplotlib.pyplot as plt
 from torch.utils.data import DataLoader, TensorDataset
 import torch.optim as optim
 
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using {device} device")
 dataset = load_dataset("tner/bionlp2004")
