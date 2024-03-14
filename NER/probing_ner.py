@@ -19,23 +19,10 @@ from torch.utils.data import DataLoader, TensorDataset
 import torch.optim as optim
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using {device} device")
-dataset = load_dataset("tner/bionlp2004")
 
 def dataset_to_dataframe(split):
+    dataset = load_dataset("tner/bionlp2004")
     return pd.DataFrame({'tokens': dataset[split]['tokens'], 'tags': dataset[split]['tags']})
-train_df = dataset_to_dataframe('train')
-validation_df = dataset_to_dataframe('validation')
-test_df = dataset_to_dataframe('test')
-
-label_mapping = {
-    "O": 0,
-    "B-DNA": 1, "I-DNA": 1,
-    "B-protein": 2, "I-protein": 2,
-    "B-cell_type": 3, "I-cell_type": 3,
-    "B-cell_line": 4, "I-cell_line": 4,
-    "B-RNA": 5, "I-RNA": 5
-}
 
 def update_tags(tags_list, label_mapping):
     return [label_mapping[tag] if tag in label_mapping else tag for tag in tags_list]
@@ -54,19 +41,18 @@ def load_model_and_tokenizer(model_name, training_size, device):
     model_path, tokenizer_class, model_class = model_map[model_name]
     tokenizer = tokenizer_class.from_pretrained(model_path)
 
-    model = model_class(num_labels=6) # Inizializza il modello per fine-tuning o uso diretto
-    model.to(device)
-
-    weights_path = f'model_{model_name}_{training_size}.bin'
-    if training_size > 0 and os.path.exists(weights_path):
-        model.load_state_dict(torch.load(weights_path, map_location=device))
-        print(f"Loaded weights from {weights_path}")
-    elif training_size == 0:
+    if training_size == 0:
         model = model_class.from_pretrained(model_path, num_labels=6)
-        print(f"Using pre-trained model without further fine-tuning.")
     else:
-        print("Training size is greater than 0, but no pre-trained weights found. Initializing model from scratch.")
+        model = model_class(num_labels=6)
+        weights_path = f'model_{model_name}_{training_size}.bin'
+        if os.path.exists(weights_path):
+            model.load_state_dict(torch.load(weights_path, map_location=device))
+            print(f"Loaded weights from {weights_path}")
+        else:
+            raise FileNotFoundError(f"No weights found for {model_name} with training size {training_size}.bin")
 
+    model.to(device)
     return model, tokenizer
 
 def get_entity_embeddings_mean(model, tokenizer, sentences_tokens, tags, layer_num=-1):
@@ -182,20 +168,71 @@ def probing_task(entity_embeddings, train_labels, test_entity_embeddings, test_l
     f1_micro = f1_score(flat_true_labels, flat_predictions, average='micro')
 
     return f1_macro, f1_micro
+    
+def get_data_as_tensors(df, tokenizer):
+    # Inizializza liste vuote per tokens e tags
+    token_ids_list = []
+    tags_list = []
 
+    for _, row in df.iterrows():
+        tokens = row['tokens']
+        tags = row['tags']
+        
+        # Converte i tokens in token IDs
+        token_ids = tokenizer.convert_tokens_to_ids(tokens)
+        token_ids_tensor = torch.tensor(token_ids, dtype=torch.long)
+
+        # Assicurati che le etichette siano in formato tensor
+        tags_tensor = torch.tensor(tags, dtype=torch.long)
+        
+        # Aggiungi alla lista
+        token_ids_list.append(token_ids_tensor)
+        tags_list.append(tags_tensor)
+    
+    # Effettua il padding delle sequenze per avere la stessa lunghezza
+    token_ids_padded = pad_sequence(token_ids_list, batch_first=True)
+    tags_padded = pad_sequence(tags_list, batch_first=True)
+
+    return token_ids_padded, tags_padded
+    
 def main(model_name, training_size):
-    base_path = "/path/to/your/embeddings/"  # Example base path
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Using {device} device")
 
-    bert_model, bert_tokenizer = None, None  
-    train_tokens, train_tags, test_tokens, test_tags = None, None, None, None  
-    layer_num = 0  
+    # Caricamento del dataset
+    train_df = dataset_to_dataframe('train')
+    validation_df = dataset_to_dataframe('validation')
+    test_df = dataset_to_dataframe('test')
 
-    train_entity_embeddings, train_filtered_tags, train_words = get_entity_embeddings_mean(bert_model, bert_tokenizer, train_tokens, train_tags, layer_num)
-    test_entity_embeddings, test_filtered_tags, test_words = get_entity_embeddings_mean(bert_model, bert_tokenizer, test_tokens, test_tags, layer_num)
+    # Aggiornamento dei tag utilizzando il mapping fornito
+    label_mapping = {
+        "O": 0,
+        "B-DNA": 1, "I-DNA": 1,
+        "B-protein": 2, "I-protein": 2,
+        "B-cell_type": 3, "I-cell_type": 3,
+        "B-cell_line": 4, "I-cell_line": 4,
+        "B-RNA": 5, "I-RNA": 5
+    }
 
-    train_entity_embeddings_filtered = [torch.tensor(embedding) for embedding in train_entity_embeddings]
-    test_entity_embeddings_filtered = [torch.tensor(embedding) for embedding in test_entity_embeddings]
+    for df in [train_df, validation_df, test_df]:
+        df['tags'] = df['tags'].apply(lambda tags_list: update_tags(tags_list, label_mapping))
 
+    # Caricamento del modello e del tokenizer
+    model, tokenizer = load_model_and_tokenizer(model_name, training_size, device)
+    train_tokens, train_tags = get_data_as_tensors(train_df)
+    test_tokens, test_tags = get_data_as_tensors(test_df)
+
+    # Calcolo delle entity embeddings medie per train e test set utilizzando il modello caricato
+    train_entity_embeddings, train_filtered_tags, _ = get_entity_embeddings_mean(model, tokenizer, train_tokens, train_tags, layer_num=-1)
+    test_entity_embeddings, test_filtered_tags, _ = get_entity_embeddings_mean(model, tokenizer, test_tokens, test_tags, layer_num=-1)
+
+    # Conversione degli embeddings e dei tag in Tensori PyTorch per il task di probing
+    train_entity_embeddings_filtered = torch.tensor(train_entity_embeddings, dtype=torch.float).to(device)
+    train_filtered_tags = torch.tensor(train_filtered_tags, dtype=torch.long).to(device)
+    test_entity_embeddings_filtered = torch.tensor(test_entity_embeddings, dtype=torch.float).to(device)
+    test_filtered_tags = torch.tensor(test_filtered_tags, dtype=torch.long).to(device)
+
+    # Task di probing attraverso i layer
     results = {}
     for layer_num in range(0, 13):
         print(f"Probing layer {layer_num}...")
@@ -203,10 +240,7 @@ def main(model_name, training_size):
             train_entity_embeddings_filtered,
             train_filtered_tags,
             test_entity_embeddings_filtered,
-            test_filtered_tags,
-            embedding_dim=768, 
-            hidden_dim=256, 
-            num_tags=6  
+            test_filtered_tags
         )
         results[layer_num] = {
             "F1 Macro": f1_macro,
@@ -214,7 +248,14 @@ def main(model_name, training_size):
         }
 
         print(f"Layer {layer_num}: F1 Macro = {f1_macro}, F1 Micro = {f1_micro}")
-    print("Completed probing across all BERT layers.")
+    print("Completed probing across all layers.")
+
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Load and potentially fine-tune pre-trained models based on specified training size.")
+    parser.add_argument("--model_name", type=str, choices=['bert', 'biobert', 'gpt2', 'biogpt'], required=True, help="The model name to use.")
+    parser.add_argument("--training_size", type=int, choices=[0, 10, 30, 50, 100], required=True, help="Percentage of training data to use (0 for pre-trained model only).")
+
+    args = parser.parse_args()
+
+    main(args.model_name, args.training_size)
