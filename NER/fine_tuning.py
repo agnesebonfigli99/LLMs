@@ -45,10 +45,6 @@ updated_label_mapping = {
 def update_tags(tags_list, label_mapping):
     return [label_mapping[tag] if tag in label_mapping else tag for tag in tags_list]
 
-train_df['tags'] = train_df['tags'].apply(lambda tags_list: update_tags(tags_list, updated_label_mapping))
-validation_df['tags'] = validation_df['tags'].apply(lambda tags_list: update_tags(tags_list, updated_label_mapping))
-test_df['tags'] = test_df['tags'].apply(lambda tags_list: update_tags(tags_list, updated_label_mapping))
-
 class CustomDataset(Dataset):
     def __init__(self, dataframe, tokenizer, max_len):
         self.len = len(dataframe)
@@ -142,41 +138,84 @@ def valid(model, testing_loader):
     print(classification_report(labels, predictions))
 
 
+def load_data(training_size):
+    dataset = load_dataset("tner/bionlp2004")
+    train_df = pd.DataFrame({'tokens': dataset['train']['tokens'], 'tags': dataset['train']['tags']})
+    validation_df = pd.DataFrame({'tokens': dataset['validation']['tokens'], 'tags': dataset['validation']['tags']})
+    test_df = pd.DataFrame({'tokens': dataset['test']['tokens'], 'tags': dataset['test']['tags']})
 
-MAX_LEN = 128
-TRAIN_BATCH_SIZE = 4
-VALID_BATCH_SIZE = 2
-EPOCHS = 5
-LEARNING_RATE = 1e-05 
+    if training_size < 100:
+        train_df = train_df.sample(frac=training_size / 100)
 
-tokenizer = BertTokenizer.from_pretrained('bert-base-uncased') 
-tokenizer = GPT2Tokenizer.from_pretrained('gpt2-medium').eos_token
-tokenizer = BertTokenizer.from_pretrained('mis-lab/biobert-v1.1')
-tokenizer = BioGptTokenizer.from_pretrained("microsoft/biogpt").eos_token
+    return train_df, validation_df, test_df 
 
-model = BertForTokenClassification.from_pretrained('bert-base-uncased', num_labels=6, output_attentions=True)
-model = GPT2ForTokenClassification.from_pretrained('gpt2-medium', num_labels=6, output_attentions=True)
-model= BertForTokenClassification.from_pretrained('dmis-lab/biobert-v1.1', num_labels=6, output_attentions=True)
-model = BioGptForTokenClassification.from_pretrained('microsoft/biogpt', num_labels=6, output_attentions=True)
+def load_model_and_tokenizer(model_name, training_size, device):
+    model_map = {
+        'bert': ('bert-base-uncased', BertTokenizer, BertForTokenClassification),
+        'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForTokenClassification),
+        'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForTokenClassification),
+        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForTokenClassification),  # Assumendo che GPT2Tokenizer & Classifier siano corretti per biogpt
+    }
 
-sample_df = train_df.sample(frac=0.1, random_state=200)  
-train_df, test_df, train_labels, _ = train_test_split(sample_df, test_size=0.2, random_state=42, stratify=train_labels)  
-training_set = CustomDataset(train_df, tokenizer, MAX_LEN)
-testing_set = CustomDataset(test_df, tokenizer, MAX_LEN)
+    model_path, tokenizer_class, model_class = model_map[model_name]
+    tokenizer = tokenizer_class.from_pretrained(model_path)
 
-train_params = {'batch_size': TRAIN_BATCH_SIZE, 'shuffle': True, 'num_workers': 0}
-test_params = {'batch_size': VALID_BATCH_SIZE, 'shuffle': True, 'num_workers': 0}
+    if training_size == 0:
+        model = model_class.from_pretrained(model_path, num_labels=6, output_attentions=True)
+    else:
+        path_to_finetuned_model_weights = f'/path/to/save/model_{model_name}_{training_size}.bin'
+        model = model_class(num_labels=6, output_attentions=True)
+        state_dict = torch.load(path_to_finetuned_model_weights, map_location=device)
+        model.load_state_dict(state_dict)
 
-training_loader = DataLoader(training_set, **train_params)
-testing_loader = DataLoader(testing_set, **test_params)
+    model = model.to(device)
+    model.eval()
 
-model.to(device)
+    return model, tokenizer
 
-optimizer = AdamW(model.parameters(), lr=LEARNING_RATE)
+def main(model_name, training_size):
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
-for epoch in range(EPOCHS):
-    print(f"Training epoch: {epoch + 1}")
-    train(epoch, training_loader, model, optimizer)
+    tokenizer, model = load_model_and_tokenizer(model_name)
+    model.to(device)
 
-ids_to_labels = {0: "O", 1: "DNA", 2: "protein", 3: "cell_type", 4: "cell_line", 5: "RNA"}
-labels, predictions = valid(model, testing_loader)
+    if training_size > 0:
+        train_df, validation_df, test_df = load_data(training_size / 100.0)
+
+        train_df['tags'] = train_df['tags'].apply(lambda tags_list: update_tags(tags_list, updated_label_mapping))
+        validation_df['tags'] = validation_df['tags'].apply(lambda tags_list: update_tags(tags_list, updated_label_mapping))
+        test_df['tags'] = test_df['tags'].apply(lambda tags_list: update_tags(tags_list, updated_label_mapping))
+
+        train_dataset = CustomDataset(train_df, tokenizer, MAX_LEN)
+        valid_dataset = CustomDataset(validation_df, tokenizer, MAX_LEN)
+        test_dataset = CustomDataset(test_df, tokenizer, MAX_LEN)
+
+        train_loader = DataLoader(train_dataset, batch_size=TRAIN_BATCH_SIZE, shuffle=True)
+        valid_loader = DataLoader(valid_dataset, batch_size=VALID_BATCH_SIZE, shuffle=False)
+
+        optimizer = AdamW(model.parameters(), lr=LEARNING_RATE)
+
+        for epoch in range(EPOCHS):
+            print(f"Epoch {epoch+1}/{EPOCHS}")
+            train(epoch, train_loader, model, optimizer)
+
+        print("Training completed. Validating the model...")
+        valid(model, valid_loader)
+    else:
+        print("Training size set to 0. Skipping fine-tuning and using the pre-trained model directly.")
+
+    # Salvataggio del modello
+    save_path = f'model_{model_name}_{training_size}.bin'
+    torch.save(model.state_dict(), save_path)
+    print(f"Model saved as {save_path}")
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--model_name", choices=["bert", "gpt2"], required=True, help="Model name")
+    parser.add_argument("--training_size", type=int, choices=[0, 10, 30, 50, 100], default=100, help="Percentage of training data to use (0 for pre-trained model only)")
+
+    args = parser.parse_args()
+
+    main(args.model_name, args.training_size)
+
+
