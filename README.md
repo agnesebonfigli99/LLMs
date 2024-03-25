@@ -17,3 +17,6 @@ This script fine-tunes a selected model on a specified dataset.
 ```bash
 python fine-tuning.py --training_size <PERCENTAGE> --model_name <MODEL>
 
+--training_size: Size of the training set as a percentage. Valid choices are 0, 10, 30, 50, and 100.
+--model_name: Name of the model to fine-tune. Valid choices are bert, biobert, gpt2, and biogpt.
+
