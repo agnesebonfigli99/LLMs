@@ -108,7 +108,7 @@ def load_model_and_tokenizer(model_name, training_size, device):
         'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
         'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
         'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
-        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),  # Assunzione: BioGpt utilizza GPT2Tokenizer & Classifier
+        'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),  
     }
 
     model_path, tokenizer_class, model_class = model_map[model_name]
