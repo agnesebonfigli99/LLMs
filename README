@@ -1,4 +1,4 @@
-How to Execute the Code
+#How to Execute the Code
 
 This repository contains Python scripts designed for fine-tuning, probing, and comparing model attentions of various pre-trained models. Below, you'll find instructions on how to execute each script via the command line, including the necessary arguments.
 
