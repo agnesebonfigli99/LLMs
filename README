@@ -1,1 +1,22 @@
 From Pre-training to Fine-tuning: an in-depth Analysis of LargeLanguage Models in the Biomedical Domain
+# How to Execute the Code
+
+This repository contains Python scripts designed for fine-tuning, probing, and comparing model attentions of various pre-trained models. Below, you'll find instructions on how to execute each script via the command line, including the necessary arguments.
+
+## Prerequisites
+
+Before running the scripts, ensure you have Python installed on your system. It's recommended to use a virtual environment for Python projects to manage dependencies effectively.
+
+## Scripts
+
+### 1. Fine-Tuning (`fine-tuning.py`)
+
+This script fine-tunes a selected model on a specified dataset.
+
+**Usage:**
+
+```bash
+python fine-tuning.py --training_size <PERCENTAGE> --model_name <MODEL>
+
+--training_size: Size of the training set as a percentage. Valid choices are 0, 10, 30, 50, and 100.
+--model_name: Name of the model to fine-tune. Valid choices are bert, biobert, gpt2, and biogpt.
