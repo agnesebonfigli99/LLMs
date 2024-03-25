@@ -30,3 +30,14 @@ Arguments:
 
 --training_size: Size of the training set as a percentage. Valid choices are 0, 10, 30, 50, and 100.
 --model_name: Name of the model to fine-tune. Valid choices are bert, biobert, gpt2, and biogpt. 
+
+### 2. Probing Task (`probing.py`)
+
+This script is designed to perform probing tasks, enabling researchers to analyze and understand the capabilities of pre-trained or fine-tuned models within the biomedical domain. It's particularly useful for assessing model understanding of complex biomedical concepts and relationships.
+
+**Usage:**
+
+```bash
+python probing.py --training_size <PERCENTAGE> --model_name <MODEL>
+--training_size: Specifies the size of the training set as a percentage. This allows for experimentation with varying amounts of training data to see how it affects model performance. Valid choices are 0, 10, 30, 50, and 100.
+--model_name: Determines the model to be used for the probing task. This script supports a range of models tailored for biomedical tasks, including bert, biobert, gpt2, and biogpt, allowing for comparative analysis across different architectures and training regimes.
