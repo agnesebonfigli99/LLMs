@@ -58,9 +58,6 @@ def load_model_and_tokenizer(model_name, training_size, device):
     return model, tokenizer
 
 def get_entity_embeddings_mean(model, tokenizer, sentences_tokens, tags, layer_num=-1):
-    """
-    Compute the mean embeddings for entities using BERT model.
-    """
     model.eval() 
     entity_embeddings_means = []
     corresponding_labels = []
