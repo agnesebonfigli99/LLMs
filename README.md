@@ -1,6 +1,8 @@
-# LLMs in the Biomedical Domain
+# From Pre-training to Fine-tuning: an in-depth Analysis of Large
+Language Models in the Biomedical Domain
 
-This repository supports the research paper "LLMs in the Biomedical Domain" and contains Python scripts specifically designed for fine-tuning, probing, and comparing attentions of various pre-trained language models in the biomedical sector. These scripts are essential for researchers looking to understand the intricacies of language model behavior within this specialized domain.
+This repository supports the research paper "From Pre-training to Fine-tuning: an in-depth Analysis of Large
+Language Models in the Biomedical Domain" and contains Python scripts specifically designed for fine-tuning, probing, and comparing attentions of pre-trained language models.
 
 ## Getting Started
 
@@ -11,10 +13,10 @@ Before executing the scripts, it's crucial to navigate to the correct directory 
 
 Each directory contains scripts tailored for these tasks, using the following pre-trained models:
 
-- **BERT**: The original BERT model, known for its effectiveness in a wide range of NLP tasks.
-- **BioBERT**: A domain-specific version of BERT pre-trained on biomedical literature, optimized for biomedical NLP tasks.
-- **GPT-2 Medium**: A medium-sized variant of the GPT-2 model, offering a balance between performance and computational efficiency.
-- **BioGPT**: Similar to BioBERT, BioGPT is fine-tuned for the biomedical domain, providing insights into GPT-style generative models' capabilities in this field.
+- **BERT**
+- **BioBERT**
+- **GPT-2 Medium**
+- **BioGPT**
 
 Below, you'll find instructions on how to execute each script via the command line, including the necessary arguments for fine-tuning, probing, and attention comparison tasks. Ensure you are in the correct task-specific directory (`NLI` or `NER`) before proceeding with the script execution.
 
@@ -35,7 +37,7 @@ Arguments:
 
 ### 2. Probing Task (`probing.py`)
 
-Executes a probing task to analyze the encoding capabilities of pre-trained or fine-tuned models
+Executes a probing task to analyze the encoding capabilities of pre-trained and fine-tuned models
 
 **Usage:**
 
