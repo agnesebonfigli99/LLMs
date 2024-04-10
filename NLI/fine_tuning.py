@@ -38,7 +38,7 @@ def main(training_size, model_name):
     train_sentences2, test_sentences2, _, _ = train_test_split(sentences2, labels, test_size=test_size, random_state=42, stratify=labels)
 
     model_map = {
-        'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
+        'bert': ('bert-base-cased', BertTokenizer, BertForSequenceClassification),
         'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
         'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
         'biogpt': ('microsoft/biogpt', BioGptTokenizer, BioGptForSequenceClassification) 
