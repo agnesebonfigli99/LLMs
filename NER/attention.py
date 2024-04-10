@@ -12,7 +12,7 @@ from sklearn.model_selection import train_test_split
 
 def load_model_and_tokenizer(model_name, training_size, device):
     model_map = {
-        'bert': ('bert-base-uncased', BertTokenizer, BertForTokenClassification),
+        'bert': ('bert-base-cased', BertTokenizer, BertForTokenClassification),
         'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForTokenClassification),
         'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForTokenClassification),
         'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForTokenClassification),
