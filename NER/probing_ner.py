@@ -33,7 +33,7 @@ for df in [train_df, validation_df, test_df]:
     df['tags'] = df['tags'].apply(lambda tags_list: update_tags(tags_list, label_mapping))
 
 model_map = {
-    'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
+    'bert': ('bert-base-cased', BertTokenizer, BertForSequenceClassification),
     'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
     'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
     'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),
