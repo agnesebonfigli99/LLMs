@@ -105,7 +105,7 @@ def main(model_name, training_size):
 
 def load_model_and_tokenizer(model_name, training_size, device):
     model_map = {
-        'bert': ('bert-base-uncased', BertTokenizer, BertForSequenceClassification),
+        'bert': ('bert-base-cased', BertTokenizer, BertForSequenceClassification),
         'biobert': ('dmis-lab/biobert-v1.1', BertTokenizer, BertForSequenceClassification),
         'gpt2': ('gpt2-medium', GPT2Tokenizer, GPT2ForSequenceClassification),
         'biogpt': ('microsoft/biogpt', GPT2Tokenizer, GPT2ForSequenceClassification),  
